@@ -45,7 +45,7 @@ namespace MagicConchBot.Services.Games
         private static readonly Regex ChannelRegex = GenerateChannelRegex();
         private static readonly TimeSpan DefaultOffset = TimeSpan.FromMinutes(30);
 
-        [GeneratedRegex("💀(ㅣ|\\|)(?<hours>\\d+)-?(?<hoursEnd>\\d+)?h(?<minutesEnd>\\d+)?m?(ㅣ|\\|)(?<name>\\w+(-\\w+)?)💀?")]
+        [GeneratedRegex("💀(ㅣ|\\|)(?<hours>\\d+)-?(?<hoursEnd>\\d+)?h(?<minutesEnd>\\d+)?m?(ㅣ|\\|)(?<name>\\w+(-\\w+)?)💀(?<reminderTimeHours>\\d+)?h?(?<reminderTimeMinutes>\\d+)?m?")]
         private static partial Regex GenerateChannelRegex();
         public DiscordSocketClient Client { get; }
         public FirestoreDb Firestore { get; }
@@ -169,8 +169,11 @@ namespace MagicConchBot.Services.Games
                 var hours = Convert.ToInt32(match.Groups["hours"].Value);
                 var hoursEndMatch = match.Groups["hoursEnd"];
                 var minutesEndMatch = match.Groups["minutesEnd"];
+                var reminderTimeHours = match.Groups["reminderTimeHours"];
+                var reminderTimeMinutes = match.Groups["reminderTimeMinutes"];
+                TimeSpan offset = GenerateReminderOffset(reminderTimeHours, reminderTimeMinutes);
                 var timeSinceMessage = DateTime.UtcNow - Context.Interaction.CreatedAt;
-                var defaultInterval = TimeSpan.FromHours(hours) - DefaultOffset;
+                var defaultInterval = TimeSpan.FromHours(hours) - offset;
                 var hoursMillis = (defaultInterval - timeSinceMessage - (offset ?? TimeSpan.Zero)).TotalMilliseconds;
 
                 if (hoursMillis < 0)
@@ -245,6 +248,12 @@ namespace MagicConchBot.Services.Games
 
             return nonZeroComponents.Count == 0 ? "less than 1m" : string.Join(" ", nonZeroComponents.Select((a) => a.value + a.suffix));
         }
+
+        private static TimeSpan GenerateReminderOffset(var reminderTimeMinutes = 30, var reminderTimeHours = 0)
+            {
+                reminderTimeMinutesTotal = reminderTimeHours * 60 + reminderTimeMinutes;
+                return TimeSpan.FromMinutes(reminderTimeMinutesTotal);
+            }
     }
 
     public static class DateTimeExtensions
